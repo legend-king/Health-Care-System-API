@@ -223,14 +223,27 @@ def docChats(request,id):
 @api_view(['POST'])
 def prescribeMedicine(request):
    try:
-      print(request.body)
       data = json.loads(request.body)
-      print(request.query_params)
+      # print(request.query_params)
+      # print(data)
       diagnosis = request.query_params["diagnosis"]
       advice = request.query_params["advice"]
       prescribedTo = request.query_params["prescribedTo"]
       prescribedBy = request.query_params["prescribedBy"]
-      return Response()
+      mycursor.execute("insert into prescriptions(prescribed_by, prescribed_to, diagnosis, advice) values('{}','{}', '{}', '{}')".format(prescribedBy, prescribedTo, diagnosis, advice))
+      mydb.commit()
+      mycursor.execute("select id from prescriptions where prescribed_by='{}' and prescribed_to='{}' and diagnosis='{}' and advice='{}'  order by prescribed_on desc ".format(prescribedBy, prescribedTo, diagnosis, advice))
+      result = mycursor.fetchone()
+      id = result["id"]
+      for i in data:
+         mycursor.execute('''insert into prescribedMedicines(prescription_id, medicine_name, medicine_type, 
+         before_breakfast, after_breakfast, before_lunch, after_lunch, before_dinner, evening, 
+         after_dinner, tablets, duration) values('{}','{}', '{}', '{}','{}','{}', '{}', '{}','{}','{}', '{}', '{}')'''.
+         format(id, i["medicineName"], i["medicineType"], i["beforeBreakFastQuantity"],i["afterBreakFastQuantity"],
+          i["beforeLunchQuantity"], i["afterLunchQuantity"],i["beforeDinnerQuantity"], i["eveningQuantity"], 
+          i["afterDinnerQuantity"],i["medicineQuantity"], i["duration"]))
+      mydb.commit()
+      return Response({"message":"Success"})
    except Exception as e:
       print(e)
-      return Response()
+      return Response({"message":"failure"})
