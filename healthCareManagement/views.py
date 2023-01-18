@@ -247,3 +247,35 @@ def prescribeMedicine(request):
    except Exception as e:
       print(e)
       return Response({"message":"failure"})
+
+@api_view(['GET'])
+def doctorPrescribedMedicines(request):
+   try:
+      prescribed_by = request.query_params["prescribedBy"]
+      mycursor.execute("select *, DATE_FORMAT(prescribed_on, '%d-%m-%Y') as date from prescriptions where prescribed_by='{}' order by prescribed_on desc ".format(prescribed_by))
+      result = mycursor.fetchall()
+      for i in range(len(result)):
+         id = result[i]["id"]
+         mycursor.execute("select * from prescribedMedicines where prescription_id='{}' ".format(id))
+         res = mycursor.fetchall()
+         result[i]["data"]=res
+      return Response(result)
+   except Exception as e:
+      print(e)
+      return Response()
+
+@api_view(['GET'])
+def patientPrescribedMedicines(request):
+   try:
+      prescribed_to = request.query_params["prescribedTo"]
+      mycursor.execute("select *, DATE_FORMAT(prescribed_on, '%d-%m-%Y') as date from prescriptions where prescribed_to='{}' order by prescribed_on desc ".format(prescribed_to))
+      result = mycursor.fetchall()
+      for i in range(len(result)):
+         id = result[i]["id"]
+         mycursor.execute("select * from prescribedMedicines where prescription_id='{}' ".format(id))
+         res = mycursor.fetchall()
+         result[i]["data"]=res
+      return Response(result)
+   except Exception as e:
+      print(e)
+      return Response()

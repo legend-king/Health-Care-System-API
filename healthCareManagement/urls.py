@@ -16,4 +16,6 @@ urlpatterns = [
     path('patChats/<id>', views.patChats),
     path('docChats/<id>', views.docChats),
     path("prescribeMedicine", views.prescribeMedicine),  
+    path("doctorPrescribedMedicines", views.doctorPrescribedMedicines),
+    path("patientPrescribedMedicines", views.patientPrescribedMedicines),
 ]
