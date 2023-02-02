@@ -40,6 +40,8 @@ def login(request):
          mycursor.execute("select * from patient where username='{}' and password='{}'".format(name, password))
       elif ty==1:
          mycursor.execute("select * from doctor where username='{0}' and password='{1}'".format(name, password))
+      elif ty==3:
+         mycursor.execute("select * from nutritionist where username='{0}' and password='{1}'".format(name, password))
       result = mycursor.fetchone()
       print(result)
       if result:
@@ -59,12 +61,13 @@ def doctorRegister(request):
       mobile = request.POST.get("mobile")
       specialist = request.POST.get("specialist")
       email = request.POST.get("email")
+      consultationCharge = request.POST.get("consultationCharge")
 
       mycursor.execute("select * from doctor where username='{0}'".format(userName))
       result = mycursor.fetchall()
       if len(result)==1:
          return Response({"message":2})
-      mycursor.execute("insert into doctor(name, gender, mobile, email, password, username, specialist) values('{}','{}', '{}', '{}','{}','{}',{})".format(name, gender, mobile, email, password, userName, specialist))
+      mycursor.execute("insert into doctor(name, gender, mobile, email, password, username, specialist, consultation_charge) values('{}','{}', '{}', '{}','{}','{}',{}, {})".format(name, gender, mobile, email, password, userName, specialist, consultationCharge))
       x=mycursor.rowcount
 
       mydb.commit()
@@ -96,6 +99,43 @@ def doctorProfile(request, id):
       print(e)
       return Response()
 
+@api_view(['GET'])
+def nutritionistProfile(request):
+   try:
+      id = request.query_params["userName"]
+      mycursor.execute("select * from nutritionist where username='{}'".format(id))
+      result=mycursor.fetchone()
+      return Response(result)
+   except Exception as e:
+      print(e)
+      return Response()
+
+@api_view(['POST'])
+def nutritionistRegister(request):
+   try:
+      data = json.loads(request.body)
+      print(data)
+      name = data['name']
+      password = data['password']
+      userName = data["userName"]
+      gender = data["gender"]
+      mobile = data["mobile"]
+      email = data["email"]
+      consultationCharge = data['consultationCharge']
+      mycursor.execute("select * from nutritionist where username='{0}'".format(userName))
+      result = mycursor.fetchall()
+      if len(result)==1:
+         return Response({"message":2})
+      mycursor.execute("insert into nutritionist(name, gender, mobile, email, password, username, consultation_charge) values('{}','{}', '{}', '{}','{}','{}', {})".format(name, gender, mobile, email, password, userName, consultationCharge))
+      x=mycursor.rowcount
+      mydb.commit()
+      if x==1:
+         return Response({"message":1})
+      return Response({"message":0})
+   except Exception as e:
+      print(e)
+      return Response({"message":0})
+
 
 @api_view(['POST'])
 def patientRegister(request):
@@ -123,7 +163,7 @@ def patientRegister(request):
       return Response({"message":0})
    except Exception as e:
       print(e)
-      return Response()
+      return Response({"message":0})
 
 
 @api_view(['GET'])
@@ -151,12 +191,24 @@ def physicalActivity(request):
 @api_view(['GET'])
 def patientSearchDoctor(request, id):
    try:
-      mycursor.execute("SELECT username,name from doctor where specialist={}".format(id))
+      mycursor.execute("SELECT username,name, consultation_charge from doctor where specialist={}".format(id))
       result=mycursor.fetchall()
       return Response(result)
    except Exception as e:
       print(e)
       return Response()
+
+@api_view(['GET'])
+def patientSearchNutritionist(request):
+   try:
+      mycursor.execute("SELECT username,name, consultation_charge from nutritionist")
+      result=mycursor.fetchall()
+      return Response(result)
+   except Exception as e:
+      print(e)
+      return Response()
+
+
 
 @api_view(['POST'])
 def patDocChat(request):
@@ -198,7 +250,13 @@ def patChats(request, id):
       for i in result:
          mycursor.execute("select d.username, d.name, s.name as sname from doctor d, specialist s where d.username='{}' and d.specialist=s.id".format(i['receiver']))
          data = mycursor.fetchone()
-         res.append(data)
+         if data:
+            res.append(data)
+         else:
+            mycursor.execute("select username, name, 'Nutritionist' as sname from nutritionist where username='{}' ".format(i['receiver']))
+            data = mycursor.fetchone()
+            res.append(data)
+      print(res)
       return Response(res)
    except Exception as e:
       print(e)
@@ -279,3 +337,48 @@ def patientPrescribedMedicines(request):
    except Exception as e:
       print(e)
       return Response()
+
+
+@api_view(['POST'])
+def patReportUpload(request):
+    try:
+        data = request.query_params
+        print(data)
+
+        mycursor.execute('''insert into patient_reports(report_name, remark, postedBy)
+         values('{}','{}', '{}')'''.
+         format(data["reportName"], data["remark"], data["userName"]))
+        mydb.commit()
+
+        mycursor.execute('''select * from patient_reports where report_name='{}' and remark='{}' and postedBy='{}'
+         order by postedOn desc '''.
+        format(data["reportName"], data["remark"],data["userName"]))
+        
+        result= mycursor.fetchone()
+        id = result["id"]
+
+        filePath = "static/patientReports/"+str(id)+".pdf"
+
+        mycursor.execute('''update patient_reports set report='{}' where id='{}' '''.format(filePath,id))
+        mydb.commit()
+
+        with open(filePath, "wb") as file:
+            file.write(request.body)
+        return Response({"message":"Uploaded Successfully"})
+    except Exception as e:
+        print(e)
+        return Response({"message":"Failure"})
+
+
+@api_view(['GET'])
+def patientReportHistory(request):
+    try:
+        data = request.query_params
+        print(data)
+        mycursor.execute('''select * from patient_reports where postedBy='{}' '''.format(data["userName"]))
+        return Response(mycursor.fetchall())
+
+        
+    except Exception as e:
+        print(e)
+        return Response({"message":"Failure"})
